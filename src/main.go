@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"html/template"
-	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -39,10 +37,7 @@ func main() {
 		from := "gretelostrich@gmail.com"
 
 		query := fmt.Sprintf("https://api.sendgrid.com/api/mail.send.json?to=%s&subject=%s&text=%s&from=%s", to, subject, text, from)
-		log.Println(query)
-
 		apiKey := "Bearer " + os.Getenv("SENDGRID_API_KEY")
-		log.Print("apiKey", apiKey)
 
 		req, _ := http.NewRequest("POST", query, nil)
 		req.Header.Add("Authorization", apiKey)
@@ -53,14 +48,7 @@ func main() {
 			Message:   message,
 		}
 
-		resp, _ := client.Do(req)
-		log.Println("status: ", resp.Status)
-		bodyBytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		bodyString := string(bodyBytes)
-		log.Println(bodyString)
+		client.Do(req)
 
 		form.Execute(w, data)
 	})
