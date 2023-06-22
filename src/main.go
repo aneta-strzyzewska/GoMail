@@ -31,10 +31,10 @@ func main() {
 
 		client := &http.Client{}
 
-		to := "gretelostrich@gmail.com"
-		subject := url.QueryEscape("Test email")
-		text := url.QueryEscape("testing the email")
-		from := "gretelostrich@gmail.com"
+		to := message.Address
+		subject := url.QueryEscape(message.Subject)
+		text := url.QueryEscape(message.Message)
+		from := os.Getenv("SENDER_ADDRESS")
 
 		query := fmt.Sprintf("https://api.sendgrid.com/api/mail.send.json?to=%s&subject=%s&text=%s&from=%s", to, subject, text, from)
 		apiKey := "Bearer " + os.Getenv("SENDGRID_API_KEY")
