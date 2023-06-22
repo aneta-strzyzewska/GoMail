@@ -10,8 +10,6 @@ import (
 	"os"
 )
 
-const apiKey = "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"
-
 type PageData struct {
 	PageTitle string
 	Message   EmailMessage
