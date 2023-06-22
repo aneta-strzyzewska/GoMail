@@ -1,13 +1,21 @@
 package main
 
 import (
+	"fmt"
 	"html/template"
+	"io"
+	"log"
 	"net/http"
+	"net/url"
+	"os"
 )
+
+const apiKey = "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"
 
 type PageData struct {
 	PageTitle string
 	Message   EmailMessage
+	Error     string
 }
 
 type EmailMessage struct {
@@ -25,10 +33,36 @@ func main() {
 			Message: r.FormValue("message"),
 		}
 
+		client := &http.Client{}
+
+		to := "gretelostrich@gmail.com"
+		subject := url.QueryEscape("Test email")
+		text := url.QueryEscape("testing the email")
+		from := "gretelostrich@gmail.com"
+
+		query := fmt.Sprintf("https://api.sendgrid.com/api/mail.send.json?to=%s&subject=%s&text=%s&from=%s", to, subject, text, from)
+		log.Println(query)
+
+		apiKey := "Bearer " + os.Getenv("SENDGRID_API_KEY")
+		log.Print("apiKey", apiKey)
+
+		req, _ := http.NewRequest("POST", query, nil)
+		req.Header.Add("Authorization", apiKey)
+		req.Header.Add("Accept", "*/*")
+
 		data := PageData{
 			PageTitle: "GoMail",
 			Message:   message,
 		}
+
+		resp, _ := client.Do(req)
+		log.Println("status: ", resp.Status)
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		bodyString := string(bodyBytes)
+		log.Println(bodyString)
 
 		form.Execute(w, data)
 	})
