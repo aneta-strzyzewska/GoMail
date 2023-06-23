@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,7 +18,7 @@ type PageData struct {
 type EmailMessage struct {
 	Address string
 	Subject string
-	Message string
+	Text    string
 }
 
 func main() {
@@ -26,32 +27,46 @@ func main() {
 		message := EmailMessage{
 			Address: r.FormValue("email"),
 			Subject: r.FormValue("subject"),
-			Message: r.FormValue("message"),
+			Text:    r.FormValue("text"),
 		}
-
-		client := &http.Client{}
-
-		to := message.Address
-		subject := url.QueryEscape(message.Subject)
-		text := url.QueryEscape(message.Message)
-		from := os.Getenv("SENDER_ADDRESS")
-
-		query := fmt.Sprintf("https://api.sendgrid.com/api/mail.send.json?to=%s&subject=%s&text=%s&from=%s", to, subject, text, from)
-		apiKey := "Bearer " + os.Getenv("SENDGRID_API_KEY")
-
-		req, _ := http.NewRequest("POST", query, nil)
-		req.Header.Add("Authorization", apiKey)
-		req.Header.Add("Accept", "*/*")
 
 		data := PageData{
 			PageTitle: "GoMail",
 			Message:   message,
 		}
 
-		client.Do(req)
+		if message.Address != "" && message.Subject != "" && message.Text != "" {
+			sendMessage(message)
+		}
 
 		form.Execute(w, data)
 	})
 
 	http.ListenAndServe(":80", nil)
+}
+
+func sendMessage(message EmailMessage) {
+	_, err := handleSendGrid(message)
+	if err != nil {
+		log.Printf("Could not send email, error: %s", err.Error())
+	}
+
+}
+
+func handleSendGrid(message EmailMessage) (*http.Response, error) {
+	client := &http.Client{}
+
+	to := message.Address
+	subject := url.QueryEscape(message.Subject)
+	text := url.QueryEscape(message.Text)
+	from := os.Getenv("SENDER_ADDRESS")
+
+	query := fmt.Sprintf("https://api.sendgrid.com/api/mail.send.json?to=%s&subject=%s&text=%s&from=%s", to, subject, text, from)
+	apiKey := "Bearer " + os.Getenv("SENDGRID_API_KEY")
+
+	req, _ := http.NewRequest("POST", query, nil)
+	req.Header.Add("Authorization", apiKey)
+	req.Header.Add("Accept", "*/*")
+
+	return client.Do(req)
 }
