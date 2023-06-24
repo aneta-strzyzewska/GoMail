@@ -61,7 +61,7 @@ func handleSendGrid(message EmailMessage) (*http.Response, error) {
 	to := message.Address
 	subject := url.QueryEscape(message.Subject)
 	text := url.QueryEscape(message.Text)
-	from := os.Getenv("SENDER_ADDRESS")
+	from := url.QueryEscape(fmt.Sprintf("Go Mail <%s>", os.Getenv("PRIMARY_SENDER_ADDRESS")))
 
 	query := fmt.Sprintf("https://api.sendgrid.com/api/mail.send.json?to=%s&subject=%s&text=%s&from=%s", to, subject, text, from)
 	apiKey := "Bearer " + os.Getenv("SENDGRID_API_KEY")
@@ -76,12 +76,13 @@ func handleSendGrid(message EmailMessage) (*http.Response, error) {
 func handleMailgun(message EmailMessage) (*http.Response, error) {
 	client := &http.Client{}
 
+	sender := os.Getenv("FALLBACK_SENDER_ADDRESS")
 	to := message.Address
 	subject := url.QueryEscape(message.Subject)
 	text := url.QueryEscape(message.Text)
-	from := url.QueryEscape(fmt.Sprintf("Go Mail <%s>", "mailgun@sandbox1f13a792e65646d7ac6126cbcf158f5f.mailgun.org"))
+	from := url.QueryEscape(fmt.Sprintf("Go Mail <%s>", sender))
 
-	query := fmt.Sprintf("https://api.mailgun.net/v3/sandbox1f13a792e65646d7ac6126cbcf158f5f.mailgun.org/messages?to=%s&subject=%s&text=%s&from=%s", to, subject, text, from)
+	query := fmt.Sprintf("https://api.mailgun.net/v3/%s/messages?to=%s&subject=%s&text=%s&from=%s", sender, to, subject, text, from)
 	apiKey := os.Getenv("MAILGUN_API_KEY")
 
 	req, _ := http.NewRequest("POST", query, nil)
