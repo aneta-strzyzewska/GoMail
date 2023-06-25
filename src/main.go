@@ -47,7 +47,7 @@ func main() {
 		form.Execute(w, data)
 	})
 
-	http.ListenAndServe(":80", nil)
+	http.ListenAndServe(":"+os.Getenv("GOMAIL_PORT"), nil)
 }
 
 func sendMessage(message EmailMessage) string {
