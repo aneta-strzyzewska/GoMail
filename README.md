@@ -30,3 +30,8 @@ The application can be started from the command line, like any other Go applicat
 Currently, there are no extrenal dependencies used in the project. However, the application relies on environment variables to store API keys and sender addresses for the primary and fallback service, and these must be configured before running, along with the application port. See `./src/gomail.env` for a list of variables that need to be configured.
 
 After configuring the environment, simply run `go run .` in the `src` folder.
+
+### Testing
+
+To test the application in case of provider failure, set an incorrect API key or sender address. Setting incorrect data for the primary will cause the application to use the fallback.
+If both are misconfigured, an error message will be displayed in the UI. After each failure, the response status and body will be logged to the console.
