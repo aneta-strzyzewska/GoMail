@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -14,7 +15,7 @@ import (
 type PageData struct {
 	PageTitle string
 	Message   EmailMessage
-	Error     string
+	Status    string
 }
 
 type EmailMessage struct {
@@ -32,13 +33,15 @@ func main() {
 			Text:    strings.TrimSpace(r.FormValue("text")),
 		}
 
+		var status string
+		if message.Address != "" && message.Subject != "" && message.Text != "" {
+			status = sendMessage(message)
+		}
+
 		data := PageData{
 			PageTitle: "GoMail",
 			Message:   message,
-		}
-
-		if message.Address != "" && message.Subject != "" && message.Text != "" {
-			sendMessage(message)
+			Status:    status,
 		}
 
 		form.Execute(w, data)
@@ -47,13 +50,24 @@ func main() {
 	http.ListenAndServe(":80", nil)
 }
 
-func sendMessage(message EmailMessage) {
+func sendMessage(message EmailMessage) string {
 	resp, err := handleSendGrid(message)
-	if err != nil || resp.StatusCode != 200 {
-		log.Printf("Could not send email")
-		log.Printf("Attempting to send via fallback")
-		handleMailgun(message)
+	if err == nil && resp.StatusCode == 200 {
+		return fmt.Sprintf("Message sent to %s", message.Address)
 	}
+
+	logError(resp)
+	log.Println("Attempting to send via fallback")
+
+	resp, err = handleMailgun(message)
+	if err == nil && resp.StatusCode == 200 {
+		return fmt.Sprintf("Message sent via fallback service to %s", message.Address)
+	}
+
+	logError(resp)
+	log.Println("Failed to send message via fallback")
+
+	return "Failed to send message"
 }
 
 func handleSendGrid(message EmailMessage) (*http.Response, error) {
@@ -81,7 +95,7 @@ func handleMailgun(message EmailMessage) (*http.Response, error) {
 	to := message.Address
 	subject := url.QueryEscape(message.Subject)
 	text := url.QueryEscape(message.Text)
-	from := url.QueryEscape(fmt.Sprintf("Go Mail <%s>", sender))
+	from := url.QueryEscape(fmt.Sprintf("Go Mail <mailgun@%s>", sender))
 
 	query := fmt.Sprintf("https://api.mailgun.net/v3/%s/messages?to=%s&subject=%s&text=%s&from=%s", sender, to, subject, text, from)
 	apiKey := os.Getenv("MAILGUN_API_KEY")
@@ -96,4 +110,11 @@ func handleMailgun(message EmailMessage) (*http.Response, error) {
 func basicAuth(username, password string) string {
 	auth := username + ":" + password
 	return base64.StdEncoding.EncodeToString([]byte(auth))
+}
+
+func logError(resp *http.Response) {
+	log.Println("Could not send email")
+	log.Println(resp.Status)
+	body, _ := io.ReadAll(resp.Body)
+	log.Println(string(body))
 }
