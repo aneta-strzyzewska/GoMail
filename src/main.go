@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 )
 
 type PageData struct {
@@ -26,9 +27,9 @@ func main() {
 	form := template.Must(template.ParseFiles("res/form.html"))
 	http.HandleFunc("/go-mail", func(w http.ResponseWriter, r *http.Request) {
 		message := EmailMessage{
-			Address: r.FormValue("email"),
-			Subject: r.FormValue("subject"),
-			Text:    r.FormValue("text"),
+			Address: strings.TrimSpace(r.FormValue("email")),
+			Subject: strings.TrimSpace(r.FormValue("subject")),
+			Text:    strings.TrimSpace(r.FormValue("text")),
 		}
 
 		data := PageData{
