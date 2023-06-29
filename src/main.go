@@ -26,6 +26,7 @@ type EmailMessage struct {
 
 func main() {
 	form := template.Must(template.ParseFiles("res/form.html"))
+	client := http.DefaultClient
 	http.HandleFunc("/go-mail", func(w http.ResponseWriter, r *http.Request) {
 		message := EmailMessage{
 			Address: strings.TrimSpace(r.FormValue("email")),
@@ -35,7 +36,7 @@ func main() {
 
 		var status string
 		if message.Address != "" && message.Subject != "" && message.Text != "" {
-			status = sendMessage(message)
+			status = sendMessage(message, client)
 		}
 
 		data := PageData{
@@ -50,8 +51,8 @@ func main() {
 	http.ListenAndServe(":"+os.Getenv("GOMAIL_PORT"), nil)
 }
 
-func sendMessage(message EmailMessage) string {
-	resp, err := handleSendGrid(message)
+func sendMessage(message EmailMessage, client *http.Client) string {
+	resp, err := handleSendGrid(message, client)
 	if err == nil && resp.StatusCode == 200 {
 		return fmt.Sprintf("Message sent to %s", message.Address)
 	}
@@ -59,7 +60,7 @@ func sendMessage(message EmailMessage) string {
 	logError(resp)
 	log.Println("Attempting to send via fallback")
 
-	resp, err = handleMailgun(message)
+	resp, err = handleMailgun(message, client)
 	if err == nil && resp.StatusCode == 200 {
 		return fmt.Sprintf("Message sent via fallback service to %s", message.Address)
 	}
@@ -70,9 +71,7 @@ func sendMessage(message EmailMessage) string {
 	return "Failed to send message"
 }
 
-func handleSendGrid(message EmailMessage) (*http.Response, error) {
-	client := &http.Client{}
-
+func handleSendGrid(message EmailMessage, client *http.Client) (*http.Response, error) {
 	to := message.Address
 	subject := url.QueryEscape(message.Subject)
 	text := url.QueryEscape(message.Text)
@@ -88,9 +87,7 @@ func handleSendGrid(message EmailMessage) (*http.Response, error) {
 	return client.Do(req)
 }
 
-func handleMailgun(message EmailMessage) (*http.Response, error) {
-	client := &http.Client{}
-
+func handleMailgun(message EmailMessage, client *http.Client) (*http.Response, error) {
 	sender := os.Getenv("FALLBACK_SENDER_ADDRESS")
 	to := message.Address
 	subject := url.QueryEscape(message.Subject)
@@ -113,8 +110,10 @@ func basicAuth(username, password string) string {
 }
 
 func logError(resp *http.Response) {
+	body := resp.Body
 	log.Println("Could not send email")
 	log.Println(resp.Status)
-	body, _ := io.ReadAll(resp.Body)
-	log.Println(string(body))
+	bodyBytes, _ := io.ReadAll(body)
+	log.Println(string(bodyBytes))
+	body.Close()
 }
